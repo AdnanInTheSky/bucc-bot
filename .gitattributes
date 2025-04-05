@@ -1,0 +1,6 @@
+# Ensure all text files use LF line endings in the repository
+*.txt text eol=lf
+*.md text eol=lf
+*.env.example text eol=lf
+
+# Add other file types as needed
