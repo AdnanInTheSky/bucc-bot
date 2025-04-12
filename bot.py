@@ -8,9 +8,10 @@ from cogs.gsheet import gSheet
 from cogs.nickname_gen import nickname_gen
 from cogs.role_gen import role_gen
 from cogs.interaction_logger import log_message
-from cogs.keep_alive import keep_alive
+from cogs.messageForwarder import handle_message
 
 # Initialize keep-alive functionality
+from cogs.keep_alive import keep_alive
 keep_alive()
 
 # Load environment variables from .env file
@@ -123,6 +124,9 @@ async def on_ready():
         print(error_message)
         await log_message(bot, error_message)
 
+@bot.event
+async def on_message(message):
+    await handle_message(bot, message)  # Call the message handler from messageForwarder.py
 
 # Run the bot
 bot_token = os.getenv('DISCORD_BOT_TOKEN')
