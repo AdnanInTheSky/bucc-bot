@@ -15,15 +15,24 @@ async def handle_message(bot, message):
     if message.channel_mentions:
         mentioned_channel = message.channel_mentions[0]  # Get the first mentioned channel
         content_to_forward = message.content.replace(f"<#{mentioned_channel.id}>", "").strip()
-    
-        if content_to_forward:  # Ensure there's a message to forward
+
+        # Prepare attachments (if any)
+        files = [await attachment.to_file() for attachment in message.attachments]
+
+        if content_to_forward or files:  # Ensure there's content or attachments to forward
             try:
-                await mentioned_channel.send(content_to_forward)
-                await log_message(bot, f"Message forwarded to {mentioned_channel.mention} by {message.author.mention}: {content_to_forward}")
+                await mentioned_channel.send(content_to_forward, files=files)
+                await log_message(
+                    bot,
+                    f"Message forwarded to {mentioned_channel.mention} by {message.author.mention}: {content_to_forward or 'No text'}"
+                )
             except Exception as e:
                 await log_message(bot, f"Failed to forward message: {e}")
         else:
-            await message.channel.send("Please provide a message to forward along with the channel mention.", delete_after=10)
-    
+            await message.channel.send(
+                "Please provide a message or attachment to forward along with the channel mention.",
+                delete_after=10
+            )
+
     # Process other commands if any
     await bot.process_commands(message)  # Process other commands if any
