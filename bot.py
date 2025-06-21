@@ -64,7 +64,7 @@ class VerifyMeButton(View):
             "Form Link: [Click Here](https://forms.gle/t3HiKSuEXaF3PwdF7)",
             ephemeral=True
         )
-        await log_message(bot, f"User {interaction.user.mention} not found in the database.")
+        await log_message(bot, f"❗ {interaction.user.mention} not found in the database.")
 
     async def _get_member(self, interaction):
         """Fetches the member object from the guild."""
@@ -92,7 +92,7 @@ class VerifyMeButton(View):
         await member.add_roles(*roles_to_add)
 
         await interaction.followup.send("You have been verified and your roles have been updated.", ephemeral=True)
-        await log_message(bot, f"User {interaction.user.mention} has been verified and roles updated.")
+        await log_message(bot, f"✅ {interaction.user.mention} has been verified and roles updated.")
 
     async def _handle_generic_error(self, interaction, error_message):
         """Handles generic errors."""
