@@ -18,6 +18,7 @@ def nickname_gen(actual_nickname: str, department: str, designation: str) -> str
         "Governing Body": "GB",
         "Executive Body": "EB",
         "Alumni": "Alumni",
+        "Faculty": "Faculty"
     }
 
     department_map = {

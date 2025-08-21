@@ -15,6 +15,7 @@ def role_gen(department: str, designation: str) -> list[str]:
         "Governing Body": "Governing Body",
         "Executive Body": "Executive Body",
         "Alumni": "Alumni",
+        "Faculty": "Faculty"
     }
 
     # Mapping for departments to their corresponding role names
