@@ -1,136 +1,209 @@
 import discord
 from discord.ext import commands
-from discord.ui import View, Button
-from dotenv import load_dotenv
+import asyncio
 import os
+import logging
 
-from cogs.gsheet import gSheet
-from cogs.nickname_gen import nickname_gen
-from cogs.role_gen import role_gen
-from cogs.interaction_logger import log_message
-from cogs.messageForwarder import handle_message
+import config
+from utils.messageForwarder import handle_message
+from utils.keep_alive import keep_alive
+from utils.interaction_logger import log_message
 
-# Initialize keep-alive functionality
-from cogs.keep_alive import keep_alive
+# Configure logging for the bot
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Define the roles that should exist in every server
+REQUIRED_ROLES = [
+    "Governing Body",
+    "Executive Body",
+    "Senior Executive",
+    "Alumni",
+    "Faculty",
+    "C&M",
+    "Creative",
+    "Event",
+    "Finance",
+    "HR",
+    "Press Release",
+    "R&D",
+]
+
+# Define the channels that should exist in every server
+REQUIRED_CHANNELS = [
+    "automatic-verification",
+    "notification",
+    "message-forward-by-bot"
+]
+
+# Initialize keep-alive functionality to keep the bot running
 keep_alive()
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Configure bot intents
+# Configure bot intents for necessary events and data access
 intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
+intents.message_content = True  # Required for accessing message content
+intents.members = (
+    True  # Required for accessing member information (e.g., roles, nicknames)
+)
 
-# Initialize bot
-bot = commands.Bot(command_prefix='!', intents=intents)
-
-
-class VerifyMeButton(View):
-    """A Discord UI View for the 'Verify Me' button."""
-
-    def __init__(self):
-        super().__init__(timeout=None)  # Disable timeout for the View
-
-    @discord.ui.button(label="Verify Me", style=discord.ButtonStyle.primary)
-    async def verify_me_button(self, interaction: discord.Interaction, button: Button):
-        """Handles the 'Verify Me' button click."""
-        await interaction.response.defer(ephemeral=True)
-
-        try:
-            user_data = gSheet()  # Fetch data from Google Sheet
-            username = str(interaction.user)
-
-            if username not in user_data:
-                await self._handle_user_not_found(interaction)
-                return
-
-            member = await self._get_member(interaction)
-            if not member:
-                await self._handle_member_not_found(interaction)
-                return
-
-            await self._update_member_roles_and_nickname(interaction, member, user_data[username])
-
-        except discord.errors.NotFound:
-            await self._handle_generic_error(interaction, "Member or role not found.")
-        except Exception as e:
-            await self._handle_generic_error(interaction, str(e))
-
-    async def _handle_user_not_found(self, interaction):
-        """Handles the case where the user is not found in the database."""
-        await interaction.followup.send(
-            "Your Discord username isn't updated in our database. Kindly fill up the form. "
-            "Form Link: [Click Here](https://forms.gle/t3HiKSuEXaF3PwdF7)",
-            ephemeral=True
-        )
-        await log_message(bot, f"❗ {interaction.user.mention} not found in the database.")
-
-    async def _get_member(self, interaction):
-        """Fetches the member object from the guild."""
-        return interaction.guild.get_member(interaction.user.id) or await interaction.guild.fetch_member(interaction.user.id)
-
-    async def _handle_member_not_found(self, interaction):
-        """Handles the case where the member is not found in the guild."""
-        await interaction.followup.send("Member not found in the guild.", ephemeral=True)
-        await log_message(bot, f"Member {interaction.user.mention} not found in the guild.")
-
-    async def _update_member_roles_and_nickname(self, interaction, member, user_data):
-        """Updates the member's roles and nickname."""
-        actual_nickname, department, designation = user_data
-        discord_nickname = nickname_gen(actual_nickname, department, designation)
-        discord_roles = role_gen(department, designation)
-
-        roles_to_add = [
-            interaction.guild.get_role(int(role_id))
-            for role_id in discord_roles
-            if interaction.guild.get_role(int(role_id))
-        ]
-
-        await member.edit(roles=[])
-        await member.edit(nick=discord_nickname)
-        await member.add_roles(*roles_to_add)
-
-        await interaction.followup.send("You have been verified and your roles have been updated.", ephemeral=True)
-        await log_message(bot, f"✅ {interaction.user.mention} has been verified and roles updated.")
-
-    async def _handle_generic_error(self, interaction, error_message):
-        """Handles generic errors."""
-        await interaction.followup.send(f"An error occurred: {error_message}", ephemeral=True)
-        await log_message(bot, f"An error occurred for {interaction.user.mention}: {error_message}")
+# Initialize the bot with a command prefix and specified intents
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 @bot.event
 async def on_ready():
-    """Event handler for when the bot is ready."""
-    try:
-        print(f'Logged in as {bot.user}')
-        await log_message(bot, f'Logged in as {bot.user}')
+    """
+    Event handler that runs when the bot successfully connects to Discord.
 
-        verification_channel_id = int(os.getenv('VERIFICATION_CHANNEL_ID'))
-        channel = bot.get_channel(verification_channel_id)
+    This function performs initial setup tasks for each guild the bot is a member of,
+    including creating required roles and sending the verification button.
+    """
+    logger.info(f"Logged in as {bot.user}")
+    for guild in bot.guilds:
+        logger.info(f"Bot is ready in guild: {guild.name} (ID: {guild.id})")
+        await log_message(bot, f"Logged in as {bot.user}", guild.id)
 
-        if channel:
-            view = VerifyMeButton()
-            await channel.send('Click on the button to be verified.', view=view)
-            await log_message(bot, "Bot is ready and verification button sent.")
-        else:
-            error_message = f"Channel with ID {verification_channel_id} not found"
-            print(error_message)
-            await log_message(bot, error_message)
+        # Ensure all required roles exist in the guild
+        await _ensure_required_roles(guild)
 
-    except Exception as e:
-        error_message = f"An error occurred in on_ready: {e}"
-        print(error_message)
-        await log_message(bot, error_message)
+        # Ensure all required channels exist in the guild
+        await _ensure_required_channels(guild)
+
+        # Send the verification button to the designated channel
+        await _send_verification_button(guild)
+
 
 @bot.event
-async def on_message(message):
-    await handle_message(bot, message)  # Call the message handler from messageForwarder.py
+async def on_message(message: discord.Message):
+    """
+    Event handler that runs when a message is sent in any channel the bot can access.
 
-# Run the bot
-bot_token = os.getenv('DISCORD_BOT_TOKEN')
-if bot_token:
-    bot.run(bot_token)
-else:
-    print("Bot token not found in environment variables")
+    This function is used for message forwarding functionality.
+    """
+    await handle_message(
+        bot, message
+    )  # Call the message handler from messageForwarder.py
+
+
+async def _ensure_required_roles(guild: discord.Guild):
+    """
+    Ensures that all predefined required roles exist in the given guild.
+    If a role does not exist, the bot attempts to create it.
+
+    Args:
+        guild: The Discord guild (server) to check roles in.
+    """
+    for role_name in REQUIRED_ROLES:
+        if discord.utils.get(guild.roles, name=role_name) is None:
+            try:
+                await guild.create_role(
+                    name=role_name
+                )  # Create role without specific permissions or color
+                logger.info(f"Created role '{role_name}' in {guild.name}.")
+                await log_message(
+                    bot, f"Created role '{role_name}' in {guild.name}.", guild.id
+                )
+            except discord.Forbidden:
+                logger.warning(
+                    f"Missing permissions to create role '{role_name}' in {guild.name}."
+                )
+                await log_message(
+                    bot,
+                    f"Missing permissions to create role '{role_name}' in {guild.name}.",
+                    guild.id,
+                )
+            except Exception as e:
+                logger.error(f"Error creating role '{role_name}' in {guild.name}: {e}")
+                await log_message(
+                    bot,
+                    f"Error creating role '{role_name}' in {guild.name}: {e}",
+                    guild.id,
+                )
+
+
+async def _ensure_required_channels(guild: discord.Guild):
+    """
+    Ensures that all predefined required text channels exist in the given guild.
+    If a channel does not exist, the bot attempts to create it.
+
+    Args:
+        guild: The Discord guild (server) to check channels in.
+    """
+    for channel_name in REQUIRED_CHANNELS:
+        if discord.utils.get(guild.text_channels, name=channel_name) is None:
+            try:
+                await guild.create_text_channel(name=channel_name)
+                logger.info(f"Created channel '{channel_name}' in {guild.name}.")
+                await log_message(
+                    bot, f"Created channel '{channel_name}' in {guild.name}.", guild.id
+                )
+            except discord.Forbidden:
+                logger.warning(
+                    f"Missing permissions to create channel '{channel_name}' in {guild.name}."
+                )
+                await log_message(
+                    bot,
+                    f"Missing permissions to create channel '{channel_name}' in {guild.name}.",
+                    guild.id,
+                )
+            except Exception as e:
+                logger.error(f"Error creating channel '{channel_name}' in {guild.name}: {e}")
+                await log_message(
+                    bot,
+                    f"Error creating channel '{channel_name}' in {guild.name}: {e}",
+                    guild.id,
+                )
+
+
+async def _send_verification_button(guild: discord.Guild):
+    """
+    Sends the verification button to the 'automatic-verification' channel in the given guild.
+
+    Args:
+        guild: The Discord guild (server) to send the button to.
+    """
+    channel = discord.utils.get(guild.text_channels, name="automatic-verification")
+
+    if channel:
+        from cogs.verification.verification import VerifyMeButton
+
+        view = VerifyMeButton(bot)
+        await channel.send("Click on the button to be verified.", view=view)
+        logger.info(f"Verification button sent to {channel.name} in {guild.name}.")
+        await log_message(bot, "Bot is ready and verification button sent.", guild.id)
+    else:
+        error_message = f"Channel with name 'automatic-verification' not found in guild {guild.name}"
+        logger.warning(error_message)
+        await log_message(bot, error_message, guild.id)
+
+
+async def main():
+    """
+    The main asynchronous function that initializes and starts the bot.
+
+    This function loads all cogs and then starts the Discord bot using the token
+    from the configuration.
+    """
+    async with bot:
+        # Load all cogs from the 'cogs' directory
+        for filename in os.listdir("./cogs"):
+            if filename.endswith(".py"):
+                try:
+                    await bot.load_extension(f"cogs.{filename[:-3]}")
+                    logger.info(f"Loaded cog: {filename[:-3]}")
+                except Exception as e:
+                    logger.error(f"Failed to load cog {filename[:-3]}: {e}")
+
+        # Start the bot with the Discord token from config
+        await bot.start(config.DISCORD_BOT_TOKEN)
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except config.ConfigError as e:
+        logger.critical(f"Configuration error: {e}")
+    except Exception as e:
+        logger.critical(f"An unhandled error occurred: {e}")
