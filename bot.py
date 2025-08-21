@@ -85,6 +85,7 @@ async def on_message(message: discord.Message):
     await handle_message(
         bot, message
     )  # Call the message handler from messageForwarder.py
+    await bot.process_commands(message)
 
 
 async def _ensure_required_roles(guild: discord.Guild):
@@ -179,6 +180,24 @@ async def _send_verification_button(guild: discord.Guild):
         await log_message(bot, error_message, guild.id)
 
 
+async def load_cogs():
+    """Finds and loads all cogs in the 'cogs' directory, including subdirectories."""
+    cogs_dir = "cogs"
+    for root, dirs, files in os.walk(cogs_dir):
+        for filename in files:
+            # Load python files that are not __init__.py
+            if filename == "cog.py" or filename == "verification.py": # Only load files intended as cogs
+                # Construct the module path from the file path
+                # e.g., cogs/role_management/cog.py -> cogs.role_management.cog
+                path = os.path.join(root, filename)
+                # To create the module path, remove the base 'cogs' dir, remove .py, and replace slashes with dots
+                module_path = path.replace(os.sep, ".")[:-3]
+                try:
+                    await bot.load_extension(module_path)
+                    logger.info(f"Successfully loaded cog: {module_path}")
+                except Exception as e:
+                    logger.error(f"Failed to load cog {module_path}: {e}", exc_info=True)
+
 async def main():
     """
     The main asynchronous function that initializes and starts the bot.
@@ -187,15 +206,7 @@ async def main():
     from the configuration.
     """
     async with bot:
-        # Load all cogs from the 'cogs' directory
-        for filename in os.listdir("./cogs"):
-            if filename.endswith(".py"):
-                try:
-                    await bot.load_extension(f"cogs.{filename[:-3]}")
-                    logger.info(f"Loaded cog: {filename[:-3]}")
-                except Exception as e:
-                    logger.error(f"Failed to load cog {filename[:-3]}: {e}")
-
+        await load_cogs()
         # Start the bot with the Discord token from config
         await bot.start(config.DISCORD_BOT_TOKEN)
 
