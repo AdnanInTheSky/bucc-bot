@@ -11,9 +11,16 @@ from utils.interaction_logger import log_message
 
 # Configure logging for the bot
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, 
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    handlers=[
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
+
+# Set discord.py logging to INFO to see connection issues
+discord.utils.setup_logging(level=logging.INFO)
 
 # Define the roles that should exist in every server
 REQUIRED_ROLES = [
@@ -48,8 +55,14 @@ intents.members = (
     True  # Required for accessing member information (e.g., roles, nicknames)
 )
 
-# Initialize the bot with a command prefix and specified intents
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Initialize the bot with a command prefix and specified intents with retry settings
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    max_messages=10000,  # Limit message cache
+    heartbeat_timeout=60.0,  # Increase heartbeat timeout
+    guild_ready_timeout=5.0  # Adjust guild ready timeout
+)
 
 
 @bot.event
@@ -205,10 +218,37 @@ async def main():
     This function loads all cogs and then starts the Discord bot using the token
     from the configuration.
     """
-    async with bot:
-        await load_cogs()
-        # Start the bot with the Discord token from config
-        await bot.start(config.DISCORD_BOT_TOKEN)
+    max_retries = 5
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            async with bot:
+                await load_cogs()
+                # Start the bot with the Discord token from config
+                await bot.start(config.DISCORD_BOT_TOKEN)
+                break  # If successful, exit retry loop
+        except discord.ConnectionClosed as e:
+            logger.error(f"Connection closed (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                logger.critical("Max retries reached. Bot failed to start.")
+                raise
+        except discord.HTTPException as e:
+            if e.status == 1015 or "cloudflare" in str(e).lower():
+                logger.error(f"Cloudflare rate limit hit (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    logger.info(f"Waiting {retry_delay} seconds before retry...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.critical("Persistent Cloudflare blocking. Check your IP or contact Render support.")
+                    raise
+            else:
+                raise
 
 
 if __name__ == "__main__":
