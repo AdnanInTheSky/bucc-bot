@@ -89,6 +89,44 @@ async def on_ready():
 
 
 @bot.event
+async def on_member_join(member: discord.Member):
+    """
+    Event handler that runs when a new member joins the server.
+    Sends a welcome message to guide them through verification.
+    """
+    # Find the verification channel
+    verification_channel = discord.utils.get(member.guild.text_channels, name="automatic-verification")
+
+    if verification_channel:
+        embed = discord.Embed(
+            title=f"👋 Welcome to BUCC, {member.name}!",
+            description=(
+                f"Hey {member.mention}! We're excited to have you join the **Brac University Computer Club**!\n\n"
+                f"To unlock all channels and get your roles, please head over to {verification_channel.mention} "
+                "and click the **Verify Me** button.\n\n"
+                "See you around! 🚀"
+            ),
+            color=discord.Color.blue()
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.set_footer(text="Brac University Computer Club", icon_url=member.guild.icon.url if member.guild.icon else None)
+
+        # Try to send a DM to the new member
+        try:
+            await member.send(embed=embed)
+            logger.info(f"Sent welcome DM to {member}")
+        except discord.Forbidden:
+            # If DM fails, send in a welcome channel or log it
+            logger.warning(f"Could not send DM to {member}, they likely have DMs disabled")
+            # Optionally send to a welcome channel instead
+            welcome_channel = discord.utils.get(member.guild.text_channels, name="general")
+            if welcome_channel:
+                await welcome_channel.send(embed=embed)
+
+    await log_message(bot, f"👋 {member.mention} joined the server.", member.guild.id)
+
+
+@bot.event
 async def on_message(message: discord.Message):
     """
     Event handler that runs when a message is sent in any channel the bot can access.
@@ -183,8 +221,25 @@ async def _send_verification_button(guild: discord.Guild):
     if channel:
         from cogs.verification.verification import VerifyMeButton
 
+        # Create a beautiful embed for the verification message
+        embed = discord.Embed(
+            title="🎓 Welcome to BUCC!",
+            description=(
+                "Welcome to the **Brac University Computer Club** Discord server!\n\n"
+                "To get started and access all channels, please verify yourself by clicking the button below.\n\n"
+                "**What happens when you verify?**\n"
+                "✅ Your roles will be assigned based on your department and designation\n"
+                "✅ Your nickname will be updated to match our format\n"
+                "✅ You'll gain access to member-exclusive channels\n\n"
+                "Click **Verify Me** to begin!"
+            ),
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text="Brac University Computer Club", icon_url=guild.icon.url if guild.icon else None)
+        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+
         view = VerifyMeButton(bot)
-        await channel.send("Click on the button to be verified.", view=view)
+        await channel.send(embed=embed, view=view)
         logger.info(f"Verification button sent to {channel.name} in {guild.name}.")
         await log_message(bot, "Bot is ready and verification button sent.", guild.id)
     else:
