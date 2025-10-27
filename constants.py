@@ -87,10 +87,10 @@ class DepartmentMappings:
     MAPPING: Final[dict[str, str]] = {
         "Communication and Marketing": "C&M",
         "Creative": "Creative",
-        "Event Management": "Event",
+        "Event Management": "EM",
         "Finance": "Finance",
         "Human Resources": "HR",
-        "Press Release and Publications": "Press Release",
+        "Press Release and Publications": "PR",
         "Research and Development": "R&D",
     }
 
