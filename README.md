@@ -55,6 +55,7 @@ The project follows a modular architecture with clear separation of concerns:
 BUCC-Discord-BOT
 ├── 🚀 bot.py           # Main entry point & event handlers
 ├── ⚙️ config.py        # Configuration management
+├── 📋 constants.py     # Centralized constants & mappings
 ├── 📋 requirements.txt # Dependencies
 ```
 
@@ -70,6 +71,10 @@ cogs/
 │   ├── responder.py          # UI interactions & responses
 │   ├── service.py            # Verification business logic
 │   └── verification.py       # Main verification cog
+└── role_management/          # Role import/export system
+    ├── __init__.py           # Module initialization
+    ├── cog.py                # Role management commands
+    └── service.py            # Role operations logic
 ```
 
 </details>
@@ -79,13 +84,12 @@ cogs/
 
 ```
 utils/
-├── __init__.py           # Package initialization
+├── discord_helpers.py    # Reusable Discord utilities
 ├── gsheet.py             # Google Sheets integration
 ├── interaction_logger.py # Discord event logging
-├── keep_alive.py         # Web server for uptime
-├── messageForwarder.py   # Channel message relay
-├── nickname_gen.py       # Nickname standardization
-└── role_gen.py           # Role assignment logic
+├── message_forwarder.py  # Channel message relay
+├── nickname_generator.py # Nickname standardization
+└── role_generator.py     # Role assignment logic
 ```
 
 </details>
@@ -154,11 +158,11 @@ python bot.py
 
 ## 📚 Dependencies
 
-| Library        | Description         | Documentation                                       |
-| -------------- | ------------------- | --------------------------------------------------- |
-| **discord.py** | Discord API wrapper | [Documentation](https://discordpy.readthedocs.io/)  |
-| **pandas**     | Data manipulation   | [Documentation](https://pandas.pydata.org/)         |
-| **Flask**      | Web server          | [Documentation](https://flask.palletsprojects.com/) |
+| Library           | Version | Description         | Documentation                                            |
+| ----------------- | ------- | ------------------- | -------------------------------------------------------- |
+| **discord.py**    | 2.3.2+  | Discord API wrapper | [Documentation](https://discordpy.readthedocs.io/)       |
+| **pandas**        | 2.0.0+  | Data manipulation   | [Documentation](https://pandas.pydata.org/)              |
+| **python-dotenv** | 1.0.0+  | Environment config  | [Documentation](https://pypi.org/project/python-dotenv/) |
 
 ## 🛠️ Configuration
 
@@ -166,10 +170,10 @@ python bot.py
 
 Your Google Sheet should have the following columns:
 
-1. Discord Username (e.g., `username#1234`)
-2. Actual Name (e.g., `John Doe`)
-3. Department (e.g., `R&D`, `HR`, `Creative`)
-4. Designation (e.g., `Executive`, `Senior Executive`)
+1. Discord Username (e.g., `username`)
+2. Nick Name (e.g., `John Doe`)
+3. Department (e.g., `Research and Development`, `Finance`, `Creative`, `Human Resources`)
+4. Designation (e.g., `Executive`, `Senior Executive`, `General Member`)
 
 Make sure your sheet is published to the web to be accessible via CSV export.
 
@@ -196,9 +200,22 @@ The bot requires the following permissions:
 
 ### Commands
 
-| Command       | Description                 | Permission |
-| ------------- | --------------------------- | ---------- |
-| `!list_roles` | List all roles with details | Everyone   |
+| Command         | Description                      | Permission    | Restriction      |
+| --------------- | -------------------------------- | ------------- | ---------------- |
+| `!export_roles` | Export server roles to JSON file | Administrator | test-com channel |
+| `!import_roles` | Import roles from JSON file      | Administrator | test-com channel |
+
+## 💎 Code Quality
+
+This project follows enterprise-level coding standards:
+
+- ✅ **Modular Design** - Clear separation of concerns with small, focused files
+- ✅ **Type Safety** - Comprehensive type hints throughout the codebase
+- ✅ **PEP 8 Compliant** - Follows Python style guidelines
+- ✅ **DRY Principle** - No code duplication, reusable utilities
+- ✅ **Constants Management** - All magic strings centralized in `constants.py`
+- ✅ **Error Handling** - Proper exception handling with custom error types
+- ✅ **Self-Documenting** - Clear naming conventions minimize need for comments
 
 ## 🤝 Contributing
 
@@ -216,7 +233,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📬 Contact
 
-BUCC - [buccbuet@gmail.com](mailto:buccbuet@gmail.com)
+BUCC - [bucc@g.bracu.ac.bd](mailto:bucc@g.bracu.ac.bd)
 
 Project Link: [https://github.com/AffanHossainRakib/BUCC-Discord-BOT](https://github.com/AffanHossainRakib/BUCC-Discord-BOT)
 

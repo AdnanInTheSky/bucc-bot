@@ -1,45 +1,98 @@
-import discord
-from utils.gsheet import gSheet
-from utils.nickname_gen import nickname_gen
-from utils.role_gen import role_gen
+"""
+Verification service for member verification workflow.
 
-# Custom Exceptions
+Handles fetching member data from Google Sheets and updating Discord
+member roles and nicknames.
+"""
+
+import discord
+import logging
+from typing import Optional
+
+from utils.gsheet import fetch_member_data_from_sheet, SheetFetchError
+from utils.nickname_generator import generate_member_nickname
+from utils.role_generator import generate_member_roles
+from utils.discord_helpers import get_or_fetch_member
+
+logger = logging.getLogger(__name__)
+
+
 class VerificationError(Exception):
     """Base exception for verification errors."""
+
     pass
+
 
 class UserNotFoundInSheetError(VerificationError):
     """Raised when the user is not found in the Google Sheet."""
+
     pass
+
 
 class MemberNotFoundError(VerificationError):
     """Raised when the member is not found in the guild."""
+
     pass
 
+
 class VerificationService:
-    """
-    Handles the core logic of the verification process.
-    """
+    """Handles the core logic of the verification process."""
+
     def __init__(self, bot: discord.ext.commands.Bot):
         self.bot = bot
 
-    def _get_user_data(self, username: str) -> list | None:
-        """Fetches the user's data from the Google Sheet."""
-        all_user_data = gSheet()
-        return all_user_data.get(username)
+    def _get_user_data(self, username: str) -> Optional[list[str]]:
+        """
+        Fetch user data from Google Sheet.
+
+        Args:
+            username: Discord username to look up
+
+        Returns:
+            List containing [name, department, designation] or None if not found
+
+        Raises:
+            SheetFetchError: If sheet cannot be accessed
+        """
+        try:
+            all_user_data = fetch_member_data_from_sheet()
+            return all_user_data.get(username)
+        except SheetFetchError:
+            logger.error(f"Failed to fetch sheet data for username lookup: {username}")
+            raise
 
     async def _get_member(self, interaction: discord.Interaction) -> discord.Member:
-        """Fetches the member object from the guild."""
-        member = interaction.guild.get_member(interaction.user.id) or await interaction.guild.fetch_member(interaction.user.id)
+        """
+        Get member from guild cache or fetch from API.
+
+        Args:
+            interaction: Discord interaction object
+
+        Returns:
+            Discord Member object
+
+        Raises:
+            MemberNotFoundError: If member cannot be found
+        """
+        member = await get_or_fetch_member(interaction.guild, interaction.user.id)
         if not member:
-            raise MemberNotFoundError("Could not find member in the guild.")
+            raise MemberNotFoundError("Could not find member in the guild")
         return member
 
-    async def _update_member(self, interaction: discord.Interaction, member: discord.Member, user_data: list):
-        """Updates the member's roles and nickname."""
-        actual_nickname, department, designation = user_data
-        new_nickname = nickname_gen(actual_nickname, department, designation)
-        role_names = role_gen(department, designation)
+    async def _update_member(
+        self, interaction: discord.Interaction, member: discord.Member, user_data: list[str]
+    ) -> None:
+        """
+        Update member's nickname and roles based on verified data.
+
+        Args:
+            interaction: Discord interaction object
+            member: Member to update
+            user_data: List containing [name, department, designation]
+        """
+        actual_name, department, designation = user_data
+        new_nickname = generate_member_nickname(actual_name, department, designation)
+        role_names = generate_member_roles(department, designation)
 
         roles_to_add = [
             discord.utils.get(interaction.guild.roles, name=role_name)

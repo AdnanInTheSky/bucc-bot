@@ -1,31 +1,55 @@
+"""
+Google Sheets data fetching utilities.
+
+This module provides functions to fetch and parse member data from
+Google Sheets published to the web as CSV.
+"""
+
 import pandas as pd
-import config
 import logging
+
+import config
 
 logger = logging.getLogger(__name__)
 
 
-def gSheet() -> dict:
-    """
-    Fetches data from a Google Sheet and returns it as a dictionary.
+class SheetFetchError(Exception):
+    """Raised when fetching data from Google Sheet fails."""
 
-    The Google Sheet ID is retrieved from the configuration.
-    The first column of the sheet is used as keys, and subsequent columns as values in a list.
+    pass
+
+
+def fetch_member_data_from_sheet() -> dict[str, list[str]]:
+    """
+    Fetch member data from the configured Google Sheet.
+
+    The sheet must be published to web with CSV export enabled.
+    First column (Discord username) becomes dict keys, remaining
+    columns become list values [name, department, designation].
 
     Returns:
-        A dictionary where keys are from the first column and values are lists
-        of data from the rest of the columns.
+        Dictionary mapping Discord usernames to member data lists
+
+    Raises:
+        SheetFetchError: If sheet cannot be accessed or parsed
     """
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{config.GOOGLE_SHEET_ID}/export?format=csv"
-        df = pd.read_csv(url)
+        sheet_url = f"https://docs.google.com/spreadsheets/d/{config.GOOGLE_SHEET_ID}/export?format=csv"
+        dataframe = pd.read_csv(sheet_url)
 
-        # Create a dictionary from the dataframe
-        # The first column is used as the index (keys), and rows are converted to lists (values)
-        data_dict = df.set_index(df.columns[0]).T.to_dict("list")
+        member_data = dataframe.set_index(dataframe.columns[0]).T.to_dict("list")
 
-        logger.info("Successfully fetched data from Google Sheet.")
-        return data_dict
+        logger.info("Successfully fetched member data from Google Sheet")
+        return member_data
+
+    except pd.errors.EmptyDataError:
+        logger.error("Google Sheet is empty")
+        raise SheetFetchError("Google Sheet contains no data")
+
+    except pd.errors.ParserError as e:
+        logger.error(f"Failed to parse Google Sheet CSV: {e}")
+        raise SheetFetchError(f"Invalid CSV format: {e}")
+
     except Exception as e:
-        logger.error(f"Error fetching data from Google Sheet: {e}")
-        return {}
+        logger.error(f"Unexpected error fetching Google Sheet: {e}")
+        raise SheetFetchError(f"Failed to fetch sheet data: {e}")

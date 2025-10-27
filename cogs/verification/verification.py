@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.ui import View, Button
 import logging
 
+from constants import ButtonIDs
 from .service import VerificationService, UserNotFoundInSheetError, MemberNotFoundError
 from .responder import (
     handle_user_not_found,
@@ -33,7 +34,7 @@ class VerifyMeButton(View):
     @discord.ui.button(
         label="Verify Me",
         style=discord.ButtonStyle.primary,
-        custom_id="verify_me_button",
+        custom_id=ButtonIDs.VERIFY_ME,
     )
     async def verify_me_button(self, interaction: discord.Interaction, button: Button):
         """

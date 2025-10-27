@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ```
 
 **Deployment:**
-The bot is configured for deployment on Railway and Render. Configuration files exist for both platforms (`railway.json` and `render.yaml`).
+The bot is configured for deployment on Railway using NIXPACKS. Configuration file: `railway.json`.
 
 ## Architecture
 
@@ -42,9 +42,9 @@ The bot uses discord.py's cog system for modular functionality. Cogs are auto-lo
 - `responder.py` - UI response handlers for different verification outcomes
 
 The verification flow:
-1. User clicks "Verify Me" button → `verification.py:38-58`
+1. User clicks "Verify Me" button → `verification.py:39-58`
 2. `VerificationService.verify_user()` fetches user data from Google Sheet
-3. If found, generates nickname via `nickname_gen()` and roles via `role_gen()`
+3. If found, generates nickname via `generate_member_nickname()` and roles via `generate_member_roles()`
 4. Updates member with new nickname and roles
 5. Sends appropriate response (success/error) via responder functions
 
@@ -60,25 +60,25 @@ The verification flow:
 - Returns dictionary with Discord username as key, `[name, department, designation]` as value
 - Google Sheet must be published to web for CSV access
 
-**Nickname Generation (`nickname_gen.py`):**
+**Nickname Generation (`nickname_generator.py`):**
 - Formats: `{name} || {dept} || {designation}` for regular members
 - Formats: `{name} || {designation}` for GB/EB/Alumni
 - Maps full names to abbreviations (e.g., "Senior Executive" → "SE")
 
-**Role Assignment (`role_gen.py`):**
+**Role Assignment (`role_generator.py`):**
 - GB/EB/Alumni: Only designation role
 - Senior Executives: Department role + "Senior Executive" role
 - Executives/General Members: Only department role
 - Department names mapped to abbreviations (e.g., "Research and Development" → "R&D")
 
+**Discord Helpers (`discord_helpers.py`):**
+- Reusable utilities for Discord operations (get channels, fetch members, create roles/channels)
+
 **Logging (`interaction_logger.py`):**
-- Sends log messages to "notification" channel in each guild
+- Sends formatted log messages to "notification" channel in each guild
 
-**Message Forwarding (`messageForwarder.py`):**
+**Message Forwarding (`message_forwarder.py`):**
 - Relays messages between configured channels
-
-**Keep Alive (`keep_alive.py`):**
-- Flask web server for uptime monitoring/health checks
 
 ## Required Roles and Channels
 
@@ -122,10 +122,10 @@ All verification errors are caught in `verification.py:45-58` and routed to appr
 
 The bot implements retry logic with exponential backoff for:
 - Connection closed errors (`discord.ConnectionClosed`)
-- Cloudflare rate limiting (HTTP 1015)
+- HTTP errors (`discord.HTTPException`)
 - Max 5 retries with delays: 5s, 10s, 20s, 40s, 80s
 
-See `bot.py:221-251` for implementation details.
+See `bot.py:174-195` for implementation details.
 
 ## Development Notes
 

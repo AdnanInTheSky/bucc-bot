@@ -12,9 +12,10 @@ from discord.ext import commands
 import json
 import os
 import logging
+
+from constants import ChannelNames
 from . import service
 
-# Configure a logger for this cog
 logger = logging.getLogger(__name__)
 
 class RoleManagementCog(commands.Cog, name="Role Management"):
@@ -37,8 +38,7 @@ class RoleManagementCog(commands.Cog, name="Role Management"):
         Usage:
             !export_roles
         """
-        # Silently ignore commands not in the correct channel
-        if ctx.channel.name != 'test-com':
+        if ctx.channel.name != ChannelNames.TEST_COMMAND:
             return
 
         # Defer the response to let users know the bot is working on the request.
@@ -82,8 +82,7 @@ class RoleManagementCog(commands.Cog, name="Role Management"):
         Usage:
             !import_roles (with `roles.json` file attached)
         """
-        # Silently ignore commands not in the correct channel
-        if ctx.channel.name != 'test-com':
+        if ctx.channel.name != ChannelNames.TEST_COMMAND:
             return
 
         await ctx.typing()
