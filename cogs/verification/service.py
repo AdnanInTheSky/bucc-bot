@@ -90,9 +90,13 @@ class VerificationService:
             member: Member to update
             user_data: List containing [name, department, designation]
         """
+        from constants import REQUIRED_ROLES
+
         actual_name, department, designation = user_data
         new_nickname = generate_member_nickname(actual_name, department, designation)
         role_names = generate_member_roles(department, designation)
+
+        logger.info(f"Assigning roles {role_names} to {member}")
 
         roles_to_add = [
             discord.utils.get(interaction.guild.roles, name=role_name)
@@ -100,7 +104,23 @@ class VerificationService:
             if discord.utils.get(interaction.guild.roles, name=role_name)
         ]
 
-        await member.edit(nick=new_nickname, roles=roles_to_add)
+        logger.info(f"Found roles to add: {[role.name for role in roles_to_add]}")
+
+        # Remove all existing BUCC roles (department and designation roles)
+        roles_to_remove = [
+            role for role in member.roles
+            if role.name in REQUIRED_ROLES
+        ]
+
+        if roles_to_remove:
+            logger.info(f"Removing old roles: {[role.name for role in roles_to_remove]}")
+            await member.remove_roles(*roles_to_remove, reason="Updating verification roles")
+
+        # Update nickname
+        await member.edit(nick=new_nickname)
+
+        # Add new roles (this preserves existing roles like @everyone)
+        await member.add_roles(*roles_to_add, reason="Verified member")
 
     async def verify_user(self, interaction: discord.Interaction):
         """

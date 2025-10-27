@@ -11,27 +11,23 @@ async def handle_user_not_found(bot: discord.ext.commands.Bot, interaction: disc
         description=(
             "We couldn't find your Discord username in our database.\n\n"
             "**What should you do?**\n"
-            "Please fill out the BUCC membership form to register your Discord username.\n\n"
-            "Once submitted, wait for the database to update (usually within 24 hours), then try verifying again."
+            "Please fill out the BUCC membership form to register your Discord username.\n"
+            "Once submitted, wait for the database to update (usually within 5 minutes), then try verifying again.\n\n"
+            f"• Discord Username: `{interaction.user}` (copy this exactly)\n"
+            f"• Nickname: Use your first or last name\n\n"
+            "**📝 Registration Form**\n"
+            "[Click here to fill the form](https://forms.gle/t3HiKSuEXaF3PwdF7)\n\n"
+            "**💡 Tip**\n"
+            "Make sure your Discord username matches exactly what you entered in the form!"
         ),
         color=discord.Color.red()
     )
-    embed.add_field(
-        name="📝 Registration Form",
-        value="[Click here to fill the form](https://forms.gle/t3HiKSuEXaF3PwdF7)",
-        inline=False
-    )
-    embed.add_field(
-        name="💡 Tip",
-        value="Make sure your Discord username matches exactly what you entered in the form!",
-        inline=False
-    )
-    embed.set_footer(text="Need help? Contact a BUCC admin")
+    embed.set_footer(text="Need help? Contact a you respective Executive Body member.")
 
     await interaction.followup.send(embed=embed, ephemeral=True)
     await log_message(
         bot,
-        f"❗ {interaction.user.mention} not found in the database.",
+        f"❗ {interaction.user.mention} ({interaction.user}) not found in the database.",
         interaction.guild.id,
     )
     logger.warning(f"User not found in database: {interaction.user}")
@@ -51,7 +47,7 @@ async def handle_member_not_found(bot: discord.ext.commands.Bot, interaction: di
     await interaction.followup.send(embed=embed, ephemeral=True)
     await log_message(
         bot,
-        f"Member {interaction.user.mention} not found in the guild.",
+        f"Member {interaction.user.mention} ({interaction.user}) not found in the guild.",
         interaction.guild.id,
     )
     logger.error(
@@ -80,7 +76,7 @@ async def handle_generic_error(bot: discord.ext.commands.Bot, interaction: disco
     await interaction.followup.send(embed=embed, ephemeral=True)
     await log_message(
         bot,
-        f"An unexpected error occurred for {interaction.user.mention}.",
+        f"An unexpected error occurred for {interaction.user.mention} ({interaction.user}).",
         interaction.guild.id,
     )
 
@@ -126,7 +122,7 @@ async def handle_success(bot: discord.ext.commands.Bot, interaction: discord.Int
     await interaction.followup.send(embed=embed, ephemeral=True)
     await log_message(
         bot,
-        f"✅ {interaction.user.mention} has been verified and roles updated.",
+        f"✅ {interaction.user.mention} ({interaction.user}) has been verified and roles updated.",
         interaction.guild.id,
     )
     logger.info(f"Successfully verified and updated user: {interaction.user}")

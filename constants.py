@@ -82,7 +82,7 @@ class DesignationMappings:
 
 
 class DepartmentMappings:
-    """Maps full department names to their abbreviations."""
+    """Maps full department names to their abbreviations for nicknames."""
 
     MAPPING: Final[dict[str, str]] = {
         "Communication and Marketing": "C&M",
@@ -91,6 +91,20 @@ class DepartmentMappings:
         "Finance": "Finance",
         "Human Resources": "HR",
         "Press Release and Publications": "PR",
+        "Research and Development": "R&D",
+    }
+
+
+class DepartmentRoleMappings:
+    """Maps full department names to their Discord role names."""
+
+    MAPPING: Final[dict[str, str]] = {
+        "Communication and Marketing": "C&M",
+        "Creative": "Creative",
+        "Event Management": "Event",
+        "Finance": "Finance",
+        "Human Resources": "HR",
+        "Press Release and Publications": "Press Release",
         "Research and Development": "R&D",
     }
 

@@ -5,7 +5,7 @@ Determines which Discord roles should be assigned to members based on
 their department and designation.
 """
 
-from constants import DepartmentMappings, LEADERSHIP_DESIGNATIONS, RoleNames
+from constants import DepartmentRoleMappings, LEADERSHIP_DESIGNATIONS, RoleNames
 
 
 def generate_member_roles(department: str, designation: str) -> list[str]:
@@ -34,7 +34,7 @@ def generate_member_roles(department: str, designation: str) -> list[str]:
     if designation in LEADERSHIP_DESIGNATIONS:
         return [designation]
 
-    department_role = DepartmentMappings.MAPPING.get(department, department)
+    department_role = DepartmentRoleMappings.MAPPING.get(department, department)
 
     if designation == RoleNames.SENIOR_EXECUTIVE:
         return [department_role, RoleNames.SENIOR_EXECUTIVE]

@@ -24,9 +24,13 @@ async def handle_message(bot: discord.Client, message: discord.Message) -> None:
         bot: The Discord bot instance
         message: The message object that triggered the event
     """
+    # Ignore bot messages and DMs (messages without a guild)
+    if message.author.bot or not message.guild:
+        return
+
     forwarding_channel = get_text_channel(message.guild, ChannelNames.MESSAGE_FORWARD)
 
-    if message.author.bot or not forwarding_channel:
+    if not forwarding_channel:
         return
 
     if message.channel.id != forwarding_channel.id:
