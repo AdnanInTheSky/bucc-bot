@@ -16,6 +16,7 @@ from constants import REQUIRED_ROLES, REQUIRED_CHANNELS, ChannelNames
 from utils.message_forwarder import handle_message
 from utils.interaction_logger import log_message
 from utils.discord_helpers import ensure_role_exists, ensure_text_channel_exists, get_text_channel
+from webserver import keep_alive
 
 logging.basicConfig(
     level=logging.INFO,
@@ -199,6 +200,10 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    # Start web server for health checks (keeps bot alive on free hosting)
+    keep_alive()
+    logger.info("Health check web server started")
+
     try:
         asyncio.run(main())
     except config.ConfigError as e:
